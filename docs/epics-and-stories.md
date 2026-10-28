@@ -1,0 +1,119 @@
+# TODO App Epics and Stories
+
+## MVP
+
+- Epic: Core Task Fields
+  - Story: Require a title for each task
+    - Acceptance Criteria:
+      - A task can be created or saved only when its title contains non-whitespace characters.
+      - An empty or whitespace-only title is not saved and the user is informed that a title is required.
+    - Technical Requirements:
+      - Retain the title validation in `TaskForm` for both creation and editing; validate again at the local save boundary.
+      - Add frontend tests for valid, empty, and whitespace-only titles on create and edit.
+  - Story: Retain task completion status
+    - Acceptance Criteria:
+      - New tasks are incomplete, and users can mark tasks completed or incomplete.
+      - Completion status remains intact when other task fields are edited and after a reload.
+    - Technical Requirements:
+      - Store `completed` as a boolean in frontend task state and local storage; update it through the existing `TaskList` checkbox.
+      - Preserve `completed` when `App` saves an edit; replace the current PATCH request with a local update.
+      - Test toggling in both directions, editing a completed task, and reloading.
+- Epic: Task Due Dates
+  - Story: Add an optional due date to tasks
+    - Acceptance Criteria:
+      - A task can be created or edited with or without a due date.
+      - A valid date is retained in `YYYY-MM-DD` form, displayed on the task, and retained after reload.
+      - Clearing a due date leaves the task undated.
+    - Technical Requirements:
+      - Adapt the existing date input in `TaskForm` and date display in `TaskList` to a frontend `dueDate` field.
+      - Include `dueDate` in local task state and serialization; do not rely on the backend's `due_date` column.
+      - Test adding, editing, clearing, displaying, and reloading dates.
+  - Story: Treat invalid due dates as absent
+    - Acceptance Criteria:
+      - A malformed date or an impossible calendar date is treated as absent rather than saved or displayed as a date.
+      - A task with an invalid date does not appear in the Today or Overdue views.
+    - Technical Requirements:
+      - Use a shared strict `YYYY-MM-DD` calendar-date validator when saving and reading local data; do not coerce invalid input into another date.
+      - Replace `TaskForm`'s permissive date normalization and validate before `TaskList` formats or filters dates.
+      - Test malformed values, impossible dates, leap days, and absent dates.
+- Epic: Task Priorities
+  - Story: Add P1, P2, and P3 priorities
+    - Acceptance Criteria:
+      - Users can select P1, P2, or P3 when creating or editing a task.
+      - The selected priority is retained after saving and reloading; other priority values are not accepted.
+    - Technical Requirements:
+      - Add a MUI selection control to `TaskForm` and carry `priority` through frontend state and local storage.
+      - Constrain values at both the input and local save/read boundaries; use P3 as the fallback for unsupported stored values.
+      - Test all supported selections, editing, persistence, and invalid values.
+  - Story: Default task priority to P3
+    - Acceptance Criteria:
+      - A new task saved without an explicit priority has priority P3.
+      - A locally stored task without a priority is treated as P3.
+    - Technical Requirements:
+      - Initialize new form state to P3 and normalize missing priority to P3 when loading local tasks.
+      - Test new tasks and previously stored tasks without a priority.
+  - Story: Display color-coded priority badges
+    - Acceptance Criteria:
+      - Each task displays its priority as a badge: P1 red, P2 orange, and P3 gray.
+      - The badge updates when a task's priority changes.
+    - Technical Requirements:
+      - Render a labeled MUI `Chip` in `TaskList`, mapping normalized priorities to the specified colors.
+      - Test badge labels and color mappings for all three priorities and after editing.
+- Epic: Date-Based Task Filters
+  - Story: Show all tasks in the All view
+    - Acceptance Criteria:
+      - An All filter is available and shows completed and incomplete tasks, including undated tasks.
+      - Switching back to All restores all tasks without changing their data.
+    - Technical Requirements:
+      - Add filter state and MUI filter controls, preferably tabs, with All as the initial view.
+      - Filter the shared task collection without mutating it; test switching views and mixed completion states.
+  - Story: Show incomplete tasks due today
+    - Acceptance Criteria:
+      - Today shows incomplete tasks whose valid due date is today.
+      - Completed tasks and tasks with absent, invalid, past, or future dates are excluded.
+    - Technical Requirements:
+      - Compare validated date-only values against the user's local calendar date rather than parsing them as UTC timestamps.
+      - Recompute the visible list when tasks or the active filter change and when the local date changes; test date boundaries and completion states with a controlled clock.
+  - Story: Show incomplete overdue tasks
+    - Acceptance Criteria:
+      - Overdue shows incomplete tasks with a valid due date before today.
+      - Completed tasks and tasks with absent, invalid, today, or future dates are excluded.
+    - Technical Requirements:
+      - Reuse the shared date validation and local calendar-date comparison used by Today.
+      - Recompute the visible list when tasks or the active filter change and when the local date changes; test date boundaries and completion states with a controlled clock.
+- Epic: Local Task Storage
+  - Story: Keep task data in local storage
+    - Acceptance Criteria:
+      - Creating, editing, completing, and deleting tasks updates local task data; changes survive a page reload.
+      - Task operations do not require backend changes or external storage.
+    - Technical Requirements:
+      - Move the task collection into shared frontend state in `App` and persist it using browser local storage; pass tasks and CRUD callbacks to `TaskList` and `TaskForm`.
+      - Replace the existing `/api/tasks` GET, POST, PUT, PATCH, and DELETE calls with local operations; retain stable task IDs and existing description and edit/delete behavior.
+      - Handle missing or malformed stored data safely and normalize task fields on load. The existing backend uses an in-memory SQLite database, not local storage; migration of its current records requires a separate decision and is not assumed.
+      - Update frontend integration tests to exercise local CRUD and reload persistence without API mocks; reset storage between tests.
+
+## Post-MVP
+
+- Epic: Overdue Task Highlighting
+  - Story: Visually highlight overdue tasks
+    - Acceptance Criteria:
+      - Overdue tasks are visually distinguishable from tasks that are not overdue, for example with a red highlight.
+      - Tasks with no valid due date are not highlighted as overdue.
+    - Technical Requirements:
+      - Reuse the validated date comparison in `TaskList` and apply a distinct MUI style without removing existing completion styling.
+      - Test overdue, today, future, undated, and invalid-date tasks. The PRD does not specify whether completed past-due tasks should be highlighted; confirm that behavior before implementation.
+- Epic: Task Sorting
+  - Story: Sort tasks by overdue status, priority, and due date
+    - Acceptance Criteria:
+      - Among dated tasks, overdue tasks appear first, followed by other tasks; within each group, P1 precedes P2, which precedes P3.
+      - Within the same overdue and priority group, earlier due dates appear before later dates.
+    - Technical Requirements:
+      - Sort a copy of the frontend task collection using a shared date comparator and an explicit P1-to-P3 priority rank; do not change backend sorting.
+      - Test combinations of overdue status, priority, equal dates, and ascending dates with a controlled clock.
+      - Confirm whether completed past-due tasks count as overdue for sorting; the PRD does not specify this.
+  - Story: Place undated tasks last
+    - Acceptance Criteria:
+      - Tasks with no valid due date appear after all dated tasks, regardless of priority.
+    - Technical Requirements:
+      - Apply the undated check before the overdue, priority, and due-date comparisons; treat invalid dates as absent. This interprets the PRD's "undated tasks last" as applying across all priorities.
+      - Test undated and invalid-date P1 tasks against dated tasks of every priority.
