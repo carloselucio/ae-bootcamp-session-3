@@ -92,3 +92,13 @@ li:last-child {
   color: #d32f2f;
   font-weight: bold;
 }
+
+/* Priority selector colors (from UI sketch, docs/stories/priority-field-ui-sketch.png) */
+.priority-button {
+  background-color: #7A7A7A; /* unselected: gray */
+  color: #ffffff;
+}
+
+.priority-button.priority-button--selected {
+  background-color: #07F2E6; /* selected: blue */
+}

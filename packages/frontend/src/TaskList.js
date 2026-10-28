@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-  List, ListItem, ListItemText, IconButton, Checkbox, Typography, Box, CircularProgress, Paper, Chip
+  List, ListItem, ListItemText, IconButton, Checkbox, Typography, Box, CircularProgress, Paper, Chip, Button
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
 
-function TaskList({ onEdit }) {
+const PRIORITIES = ['P1', 'P2', 'P3'];
+
+function TaskList({ onEdit, onUpdatePriority }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,6 +63,16 @@ function TaskList({ onEdit }) {
       fetchTasks();
     } catch (err) {
       setError('Failed to delete task');
+    }
+  };
+
+  const handlePriorityClick = async (task, priority) => {
+    if (task.priority === priority) return;
+    try {
+      await onUpdatePriority(task.id, priority);
+      fetchTasks();
+    } catch (err) {
+      setError('Failed to update priority');
     }
   };
 
@@ -220,6 +232,38 @@ function TaskList({ onEdit }) {
                   }}
                 />
               )}
+              <Box
+                role="radiogroup"
+                aria-label="Task priority"
+                sx={{ display: 'flex', gap: 0.5 }}
+              >
+                {PRIORITIES.map((priority) => {
+                  const isSelected = (task.priority || 'P3') === priority;
+                  return (
+                    <Button
+                      key={priority}
+                      role="radio"
+                      aria-checked={isSelected}
+                      data-testid={`priority-${priority}-${task.id}`}
+                      onClick={() => handlePriorityClick(task, priority)}
+                      className={`priority-button${isSelected ? ' priority-button--selected' : ''}`}
+                      size="small"
+                      sx={{
+                        minWidth: 28,
+                        width: 28,
+                        height: 20,
+                        p: 0,
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        borderRadius: 1,
+                      }}
+                    >
+                      {priority}
+                    </Button>
+                  );
+                })}
+              </Box>
               <Box 
                 sx={{ 
                   display: 'flex', 
